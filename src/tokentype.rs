@@ -1,23 +1,21 @@
-#[allow(non_camel_case_types)]
-#[allow(unsupported_calling_conventions)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     // Single-character tokens.
-    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
-    COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
+    LeftParen, RightParen, LeftBrace, RightBrace,
+    Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
   
     // One or two character tokens.
-    BANG, BANG_EQUAL,
-    EQUAL, EQUAL_EQUAL,
-    GREATER, GREATER_EQUAL,
-    LESS, LESS_EQUAL,
+    Bang, BangEqual,
+    Equal, EqualEqual,
+    Greater, GreaterEqual,
+    Less, LessEqual,
   
     // Literals.
-    IDENTIFIER(String), STRING(String), NUMBER(f64),
+    Identifier(String), String(String), Number(f64),
   
     // Keywords.
-    AND, CLASS, ELSE, FALSE, FOR, FUN, IF, NIL, OR,
-    PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
+    And, Class, Else, False, For, Fun, If, Nil, Or,
+    Print, Return, Super, This, True, Var, While,
   
-    EOF
+    Eof
 }

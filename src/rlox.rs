@@ -2,17 +2,18 @@ use std::io::Write;
 use std::io::stdout;
 use std::process::exit;
 use crate::scanner::Scanner;
+use std::sync::Mutex;
 
-static mut HAD_ERROR: bool = false;
+pub static HAD_ERROR: Mutex<bool> = Mutex::new(false);
 
 pub fn main(args: Vec<String>) {
-    if args.len() > 2 {
-        println!("Usage: rlox [script]");
-        exit(64);
-    } else if args.len() == 2 {
-        run_file(&args[1])
-    } else {
-        run_prompt()
+    match args.len().cmp(&2) { // Clippy wasn't happy with using if else :/
+        std::cmp::Ordering::Greater => {
+            println!("Usage: rlox [script]");
+            exit(64);
+        }
+        std::cmp::Ordering::Equal => run_file(&args[1]),
+        std::cmp::Ordering::Less => run_prompt(),
     }
 }
 
@@ -24,10 +25,8 @@ fn run_file(path: &str) {
             match source {
                 Some(source) => {
                     run(source);
-                    unsafe {
-                        if HAD_ERROR {
-                            exit(65);
-                        }
+                    if *HAD_ERROR.lock().unwrap() {
+                        exit(65);
                     }
                 },
                 None => {
@@ -53,7 +52,7 @@ fn run_prompt() {
         match res {
             Ok(_) => {
                 run(line);
-                unsafe {HAD_ERROR = false;}
+                *HAD_ERROR.lock().unwrap() = false;
             },
             Err(_) => {
                 println!("Error reading line");
@@ -77,5 +76,5 @@ pub fn error(line: usize, message: &str) {
 
 fn report(line: usize, location: &str, message: &str) {
     println!("[line {}] Error {}: {}", line, location, message);
-    unsafe {HAD_ERROR = false;}
+    *HAD_ERROR.lock().unwrap() = true;
 }

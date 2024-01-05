@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::tokentype::TokenType;
 
 #[derive(Debug, Clone)]
@@ -15,8 +17,10 @@ impl Token {
             line,
         }
     }
+}
 
-    fn to_string(&self) -> String {
-        format!("{:?} {}", self.token_type, self.lexeme)
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?} {} {}", self.token_type, self.lexeme, self.line)
     }
 }

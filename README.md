@@ -9,6 +9,6 @@ IW
 ## To Do List
 
 - [x] Scanner
-  - [ ] Add support for multiline comments
+  - [x] Add support for multiline comments
 - [ ] Parser
 - [ ] Interpreter
