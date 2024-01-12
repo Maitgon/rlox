@@ -4,11 +4,16 @@ This is a Rust implementation of the Lox language from the book [Crafting Interp
 
 ## Usage
 
-IW
+UNDER CONSTRUCTION
 
-## To Do List
+## Progress
 
-- [x] Scanner
-  - [x] Add support for multiline comments
-- [ ] Parser
-- [ ] Interpreter
+- [x] Chapter 4: Scanning
+- [x] Chapter 5: Representing Code
+- [x] Chapter 6: Parsing Expressions
+
+## Added features
+
+- [x] Support for multiline comments using `/*` and `*/`
+- [x] Support for `,` operator
+- [x] Support for `?:` ternary operator

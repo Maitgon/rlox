@@ -2,6 +2,7 @@ use std::io::Write;
 use std::io::stdout;
 use std::process::exit;
 use crate::scanner::Scanner;
+use crate::parser::Parser;
 use std::sync::Mutex;
 
 pub static HAD_ERROR: Mutex<bool> = Mutex::new(false);
@@ -65,8 +66,17 @@ fn run_prompt() {
 fn run(source: String) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
-    for token in tokens {
-        println!("{:?}", token);
+    let mut parser = Parser::new(tokens);
+    let statements = parser.parse();
+    
+    match statements {
+        Ok(statements) => {
+            println!("{}", statements);
+        },
+        Err(err) => {
+            *HAD_ERROR.lock().unwrap() = true;
+            println!("{}", err);
+        }
     }
 }
 
@@ -74,7 +84,7 @@ pub fn error(line: usize, message: &str) {
     report(line, "", message);
 }
 
-fn report(line: usize, location: &str, message: &str) {
+pub fn report(line: usize, location: &str, message: &str) {
     println!("[line {}] Error {}: {}", line, location, message);
     *HAD_ERROR.lock().unwrap() = true;
 }

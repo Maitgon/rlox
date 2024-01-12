@@ -48,6 +48,8 @@ impl Scanner {
             '+' => self.add_token(TokenType::Plus),
             ';' => self.add_token(TokenType::Semicolon),
             '*' => self.add_token(TokenType::Star),
+            ':' => self.add_token(TokenType::Colon),
+            '?' => self.add_token(TokenType::QuestionMark),
 
             // One or two character tokens
             '!' => {
@@ -236,9 +238,9 @@ mod tests {
 
     #[test]
     fn test_single_char_tokens() {
-        let mut scanner = Scanner::new(String::from("(){},.-+;*/"));
+        let mut scanner = Scanner::new(String::from("(){},.-+;*/:?"));
         let tokens = scanner.scan_tokens();
-        assert_eq!(tokens.len(), 12);
+        assert_eq!(tokens.len(), 14);
         assert_eq!(tokens[0].token_type, TokenType::LeftParen);
         assert_eq!(tokens[1].token_type, TokenType::RightParen);
         assert_eq!(tokens[2].token_type, TokenType::LeftBrace);
@@ -250,7 +252,9 @@ mod tests {
         assert_eq!(tokens[8].token_type, TokenType::Semicolon);
         assert_eq!(tokens[9].token_type, TokenType::Star);
         assert_eq!(tokens[10].token_type, TokenType::Slash);
-        assert_eq!(tokens[11].token_type, TokenType::Eof);
+        assert_eq!(tokens[11].token_type, TokenType::Colon);
+        assert_eq!(tokens[12].token_type, TokenType::QuestionMark);
+        assert_eq!(tokens[13].token_type, TokenType::Eof);
     }
 
     #[test]
