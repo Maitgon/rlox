@@ -9,24 +9,6 @@ pub enum Expr {
     Unary(Token, Box<Expr>),
 }
 
-impl Expr {
-    pub fn new_binary(left: Expr, operator: Token, right: Expr) -> Expr {
-        Expr::Binary(Box::new(left), operator, Box::new(right))
-    }
-
-    pub fn new_grouping(expression: Expr) -> Expr {
-        Expr::Grouping(Box::new(expression))
-    }
-
-    pub fn new_literal(value: Token) -> Expr {
-        Expr::Literal(value)
-    }
-
-    pub fn new_unary(operator: Token, right: Expr) -> Expr {
-        Expr::Unary(operator, Box::new(right))
-    }
-}
-
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

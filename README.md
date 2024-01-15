@@ -17,3 +17,5 @@ UNDER CONSTRUCTION
 - [x] Support for multiline comments using `/*` and `*/`
 - [x] Support for `,` operator
 - [x] Support for `?:` ternary operator
+- [x] Support for `+` operator on strings and other types
+- [x] Error if you try to divide by 0

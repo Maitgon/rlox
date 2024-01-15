@@ -1,7 +1,6 @@
 use crate::token::*;
 use crate::expressions::*;
 use crate::tokentype::*;
-use crate::scanner::*;
 use crate::rlox::report;
 
 pub struct Parser {
@@ -229,6 +228,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use crate::scanner::*;
     use super::*;
 
     #[test]
