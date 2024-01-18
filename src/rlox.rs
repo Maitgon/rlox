@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::io::stdout;
 use std::process::exit;
+use crate::interpreter::Interpreter;
 use crate::scanner::Scanner;
 use crate::parser::Parser;
 use std::sync::Mutex;
@@ -52,6 +53,9 @@ fn run_prompt() {
         let res = reader.read_line(&mut line);
         match res {
             Ok(_) => {
+                if line.trim() == "quit" {
+                    break;
+                }
                 run(line);
                 *HAD_ERROR.lock().unwrap() = false;
             },
@@ -61,6 +65,8 @@ fn run_prompt() {
             }
         }
     }
+    println!("Bye!");
+    exit(0);
 }
 
 fn run(source: String) {
@@ -71,7 +77,14 @@ fn run(source: String) {
     
     match statements {
         Ok(statements) => {
-            println!("{}", statements);
+            let mut interpreter = Interpreter::new();
+            match interpreter.interpret(statements) {
+                Ok(_) => {},
+                Err(err) => {
+                    *HAD_ERROR.lock().unwrap() = true;
+                    println!("{}", err);
+                }
+            }
         },
         Err(err) => {
             *HAD_ERROR.lock().unwrap() = true;

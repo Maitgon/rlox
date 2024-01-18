@@ -7,6 +7,8 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Literal(Token),
     Unary(Token, Box<Expr>),
+    Assign(Token, Box<Expr>),
+    Variable(Token),
 }
 
 impl std::fmt::Display for Expr {
@@ -21,6 +23,8 @@ impl std::fmt::Display for Expr {
             Expr::Grouping(expression) => write!(f, "(group {})", **expression),
             Expr::Literal(value) => write!(f, "{}", value),
             Expr::Unary(operator, right) => write!(f, "({} {})", operator, **right),
+            Expr::Assign(name, value) => write!(f, "(assign {} {})", name, **value),
+            Expr::Variable(name) => write!(f, "{}", name),
         }
     }
 }

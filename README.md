@@ -11,6 +11,8 @@ UNDER CONSTRUCTION
 - [x] Chapter 4: Scanning
 - [x] Chapter 5: Representing Code
 - [x] Chapter 6: Parsing Expressions
+- [x] Chapter 7: Evaluating Expressions
+- [x] Chapter 8: Statements and State
 
 ## Added features
 

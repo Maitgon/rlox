@@ -1,24 +1,52 @@
 use std::fmt;
 use crate::tokentype::*;
 use crate::expressions::*;
+use crate::statements::*;
+use crate::environment::*;
 
 pub struct Interpreter {
     pub had_error: bool,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Value {
-    Number(f64),
-    String(String),
-    Boolean(bool),
-    Nil,
+    pub environment: Environment,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
             had_error: false,
+            environment: Environment::new(),
         }
+    }
+
+    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), String> {
+        for statement in statements {
+            self.execute_statement(statement)?;
+        }
+        Ok(())
+    }
+
+    fn execute_statement(&mut self, statement: Stmt) -> Result<(), String> {
+        match statement {
+            Stmt::Expression(expression) => {
+                self.evaluate_expression(expression)?;
+            }
+            Stmt::Print(expression) => {
+                let value = self.evaluate_expression(expression)?;
+                println!("{}", value);
+            }
+            Stmt::Var(name, expression) => {
+                let value = self.evaluate_expression(expression)?;
+                self.environment.define(name.lexeme, value);
+            }
+            Stmt::Block(statements) => {
+                let previous = self.environment.clone();
+                self.environment.enclosing = Some(Box::new(previous.clone()));
+                for statement in statements {
+                    self.execute_statement(statement)?;
+                }
+                self.environment = previous;
+            }
+        }
+        Ok(())
     }
 
     fn evaluate_expression(&mut self, expression: Expr) -> Result<Value, String> {
@@ -32,8 +60,13 @@ impl Interpreter {
                     TokenType::True => Ok(Value::Boolean(true)),
                     TokenType::False => Ok(Value::Boolean(false)),
                     TokenType::Nil => Ok(Value::Nil),
+                    TokenType::Identifier(name) => self.environment.get(&name),
                     _ => Err(format!("Unexpected token type: '{}' for Literal Expresion", token.token_type)),
                 }
+            }
+
+            Expr::Variable(name) => {
+                self.environment.get(&name.lexeme)
             }
 
             // Grouping / Parenthesis evaluation
@@ -156,6 +189,13 @@ impl Interpreter {
                     _ => Err(format!("Unexpected token type: '{}' for Ternary Expression: {} {} {} {} {}", operator1.token_type, left, operator1.token_type, middle, operator2.token_type, right)),
                 }
             }
+
+            // Assignment evaluation
+            Expr::Assign(name, value) => {
+                let new_val = self.evaluate_expression(*value)?;
+                self.environment.assign(name.lexeme, new_val.clone())?;
+                Ok(new_val)
+            }
         }
     }
 
@@ -190,7 +230,7 @@ mod tests {
         let mut parser = Parser::new(scanner.scan_tokens());
         let mut interpreter = Interpreter::new();
 
-        let expression = parser.parse();
+        let expression = parser.expression();
         match expression {
             Ok(expression) => interpreter.evaluate_expression(expression),
             Err(error) => Err(error),
@@ -287,5 +327,10 @@ mod tests {
     #[test]
     fn test_ternary_error() {
         assert_eq!(get_result_from_expression("1 == 2 ? 1/0 : 2+3"), Err(String::from("Division by zero: 1 / 0")));
+    }
+
+    #[test]
+    fn test_error_initialized_variable() {
+        assert_eq!(get_result_from_expression("a = 1"), Err(String::from("Undefined variable 'a'.")));
     }
 }

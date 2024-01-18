@@ -2,6 +2,7 @@ use crate::token::*;
 use crate::expressions::*;
 use crate::tokentype::*;
 use crate::rlox::report;
+use crate::statements::*;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -13,27 +14,129 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, String> {
-        self.expression()
+    // Grammar for Lox
+    // program -> declaration* EOF;
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, String> {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            match self.declaration() {
+                Ok(stmt) => statements.push(stmt),
+                Err(message) => {
+                    self.synchronize();
+                    return Err(message);
+                }
+            }
+        }
+
+        Ok(statements)
     }
 
-    // Parser Grammar
+    // declaration -> varDecl | statement ;
+    fn declaration(&mut self) -> Result<Stmt, String> {
+        if self.match_token(vec![TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        }
+    }
+
+    // varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
+    fn var_declaration(&mut self) -> Result<Stmt, String> {
+        let name = match self.peek().token_type {
+            TokenType::Identifier(_) => {
+                self.advance();
+                self.previous()
+            }
+            _ => {
+                return Err(String::from("Expect variable name."));
+            }
+        };
+        let initializer = if self.match_token(vec![TokenType::Equal]) {
+            self.expression()?
+        } else {
+            Expr::Literal(Token::new(TokenType::Nil, String::from("nil"), 0))
+        };
+
+        self.consume(TokenType::Semicolon, String::from("Expect ';' after variable declaration."))?;
+        Ok(Stmt::Var(name, initializer))
+    }
+
+    // statement -> exprStmt | printStmt | block ;
+    fn statement(&mut self) -> Result<Stmt, String> {
+        if self.match_token(vec![TokenType::Print]) {
+            self.print_statement()
+        } else if self.match_token(vec![TokenType::LeftBrace]) {
+            self.block()
+        } else {
+            self.expression_statement()
+        }
+    }
+
+    // block -> "{" declaration* "}" ;
+    fn block(&mut self) -> Result<Stmt, String> {
+        let mut statements = Vec::new();
+
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            match self.declaration() {
+                Ok(stmt) => statements.push(stmt),
+                Err(message) => {
+                    self.synchronize();
+                    return Err(message);
+                }
+            }
+        }
+
+        self.consume(TokenType::RightBrace, String::from("Expect '}' after block."))?;
+        Ok(Stmt::Block(statements))
+    }
+
+    // printStmt -> "print" expression ";" ;
+    fn print_statement(&mut self) -> Result<Stmt, String> {
+        let value = self.expression()?;
+        self.consume(TokenType::Semicolon, String::from("Expect ';' after expression."))?;
+        Ok(Stmt::Print(value))
+    }
+
+    // exprStmt -> expression ";" ;
+    fn expression_statement(&mut self) -> Result<Stmt, String> {
+        let expr = self.expression()?;
+        self.consume(TokenType::Semicolon, String::from("Expect ';' after expression."))?;
+        Ok(Stmt::Expression(expr))
+    }
+
+    // Expressions grammar
     // expresion -> comma ;
-    fn expression(&mut self) -> Result<Expr, String> {
+    pub fn expression(&mut self) -> Result<Expr, String> {
         self.comma()
     }
 
-    // comma -> ternary ( "," ternary )* ;
+    // comma -> assignment ( "," assignment )* ;
     fn comma(&mut self) -> Result<Expr, String> {
-        let mut expr = self.ternary()?;
+        let mut expr = self.assignment()?;
 
         while self.match_token(vec![TokenType::Comma]) {
             let operator = self.previous();
-            let right = self.ternary()?;
+            let right = self.assignment()?;
             expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
         }
 
         Ok(expr)
+    }
+
+    // assignment -> IDENTIFIER "=" assignment | ternary ;
+    fn assignment(&mut self) -> Result<Expr, String> {
+        let expr = self.ternary()?;
+
+        if self.match_token(vec![TokenType::Equal]) {
+            let value = self.assignment()?;
+
+            match expr {
+                Expr::Variable(name) => Ok(Expr::Assign(name, Box::new(value))),
+                _ => Err(String::from("Invalid assignment target.")),
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     // ternary -> equality ( "?" equality ":" equality )? ;
@@ -123,12 +226,16 @@ impl Parser {
         self.primary()
     }
 
-    // primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" ;
+    // primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER;
     fn primary(&mut self) -> Result<Expr, String> {
         match self.peek().token_type {
-            TokenType::False | TokenType::True | TokenType::Nil | TokenType::Number(_) | TokenType::String(_) | TokenType::Identifier(_) => {
+            TokenType::False | TokenType::True | TokenType::Nil | TokenType::Number(_) | TokenType::String(_) => {
                 self.advance();
                 Ok(Expr::Literal(self.previous()))
+            }
+            TokenType::Identifier(_) => {
+                self.advance();
+                Ok(Expr::Variable(self.previous()))
             }
             TokenType::LeftParen => {
                 self.advance();
@@ -243,7 +350,7 @@ mod tests {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
         let expr2 = expr.clone();
 
         if expr2.is_err() {
@@ -273,7 +380,7 @@ mod tests {
         ];
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Err(String::from("Expect expression.")));
     }
@@ -286,7 +393,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Ok(Expr::Binary(
             Box::new(Expr::Binary(
@@ -311,7 +418,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Ok(Expr::Binary(
             Box::new(Expr::Binary(
@@ -332,7 +439,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Err(String::from("Expect expression.")));
     }
@@ -345,7 +452,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Err(String::from("Expect ')' after expression.")));
     }
@@ -358,7 +465,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Ok(Expr::Binary(
             Box::new(Expr::Binary(
@@ -383,7 +490,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Ok(Expr::Literal(Token::new(TokenType::Identifier(String::from("aux")), String::from("aux"), 1))));
     }
@@ -396,7 +503,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
 
         assert_eq!(expr, Ok(Expr::Binary(
             Box::new(Expr::Binary(
@@ -417,7 +524,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
         assert_eq!(expr, Err(String::from("Expect expression.")));
     }
 
@@ -429,7 +536,7 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
         assert_eq!(expr, Ok(Expr::Ternary(
             Box::new(Expr::Literal(Token::new(TokenType::Number(5.0), String::from("5"), 1))),
             Token::new(TokenType::QuestionMark, String::from("?"), 1),
@@ -447,7 +554,49 @@ mod tests {
         let tokens = scanner.scan_tokens();
 
         let mut parser = Parser::new(tokens);
-        let expr = parser.parse();
+        let expr = parser.expression();
         assert_eq!(expr, Err(String::from("Expect ':' after expression.")));
+    }
+
+    #[test]
+    fn test_program() {
+        let source = "var a = 1; var b = 2; print a + b;";
+
+        let mut scanner = Scanner::new(String::from(source));
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let statements = parser.parse();
+        assert_eq!(statements, Ok(vec![
+            Stmt::Var(Token::new(TokenType::Identifier(String::from("a")), String::from("a"), 1), Expr::Literal(Token::new(TokenType::Number(1.0), String::from("1"), 1))),
+            Stmt::Var(Token::new(TokenType::Identifier(String::from("b")), String::from("b"), 1), Expr::Literal(Token::new(TokenType::Number(2.0), String::from("2"), 1))),
+            Stmt::Print(Expr::Binary(
+                Box::new(Expr::Variable(Token::new(TokenType::Identifier(String::from("a")), String::from("a"), 1))),
+                Token::new(TokenType::Plus, String::from("+"), 1),
+                Box::new(Expr::Variable(Token::new(TokenType::Identifier(String::from("b")), String::from("b"), 1)))
+            ))
+        ]));
+    }
+
+    #[test]
+    fn test_program_error() {
+        let source = "var a = 1; var b = 2; print a + b";
+
+        let mut scanner = Scanner::new(String::from(source));
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        assert_eq!(parser.parse(), Err(String::from("Expect ';' after expression.")));
+    }
+
+    #[test]
+    fn test_program_error2() {
+        let source = "var a = ;";
+
+        let mut scanner = Scanner::new(String::from(source));
+        let tokens = scanner.scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        assert_eq!(parser.parse(), Err(String::from("Expect expression.")));
     }
 }
