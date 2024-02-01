@@ -4,6 +4,7 @@ use crate::tokentype::*;
 use crate::rlox::report;
 use crate::statements::*;
 
+#[derive(Debug, Clone)]
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,

@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::io::stdout;
 use std::process::exit;
+use crate::expressions;
 use crate::interpreter::Interpreter;
 use crate::scanner::Scanner;
 use crate::parser::Parser;
@@ -72,7 +73,7 @@ fn run_prompt() {
 fn run(source: String) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens();
-    let mut parser = Parser::new(tokens);
+    let mut parser = Parser::new(tokens.clone());
     let statements = parser.parse();
     
     match statements {
@@ -87,8 +88,24 @@ fn run(source: String) {
             }
         },
         Err(err) => {
-            *HAD_ERROR.lock().unwrap() = true;
-            println!("{}", err);
+            let mut parser = Parser::new(tokens);
+            let expression = parser.expression();
+            match expression {
+                Ok(expression) => {
+                    let mut interpreter = Interpreter::new();
+                    match interpreter.evaluate_expression(expression) {
+                        Ok(val) => println!("{}", val),
+                        Err(err) => {
+                            *HAD_ERROR.lock().unwrap() = true;
+                            println!("{}", err);
+                        }
+                    }
+                },
+                Err(_) => {
+                    *HAD_ERROR.lock().unwrap() = true;
+                    println!("{}", err);
+                }
+            }
         }
     }
 }

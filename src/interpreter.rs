@@ -49,7 +49,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate_expression(&mut self, expression: Expr) -> Result<Value, String> {
+    pub fn evaluate_expression(&mut self, expression: Expr) -> Result<Value, String> {
         match expression {
 
             // Literal evaluation

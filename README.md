@@ -21,3 +21,4 @@ UNDER CONSTRUCTION
 - [x] Support for `?:` ternary operator
 - [x] Support for `+` operator on strings and other types
 - [x] Error if you try to divide by 0
+- [/] Allowing expressions in the prompt
